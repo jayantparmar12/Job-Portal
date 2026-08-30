@@ -10,12 +10,13 @@ export function AuthProvider({ children }) {
     return token ? { token, role, email } : null;
   });
 
-  const login = (token, role, email) => {
-    localStorage.setItem("token", token);
-    localStorage.setItem("role", role);
-    localStorage.setItem("email", email);
-    setUser({ token, role, email });
-  };
+ const login = (token, refreshToken, role, email) => {
+  localStorage.setItem("token", token);
+  localStorage.setItem("refreshToken", refreshToken);
+  localStorage.setItem("role", role);
+  localStorage.setItem("email", email);
+  setUser({ token, role, email });
+};
 
   const logout = () => {
     localStorage.clear();

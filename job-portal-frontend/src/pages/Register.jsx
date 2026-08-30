@@ -16,7 +16,7 @@ export default function Register() {
     setError("");
     try {
       const res = await api.post("/auth/register", form);
-      login(res.data.token, res.data.role, res.data.email);
+      login(res.data.token, res.data.refreshToken, res.data.role, res.data.email);
       navigate("/");
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed");

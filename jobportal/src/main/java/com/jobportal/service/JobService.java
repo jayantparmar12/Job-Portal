@@ -4,11 +4,17 @@ import com.jobportal.dto.JobRequest;
 import com.jobportal.dto.JobResponse;
 import com.jobportal.entity.Job;
 import com.jobportal.entity.User;
+import com.jobportal.exception.ResourceNotFoundException;
+import com.jobportal.exception.UnauthorizedException;
 import com.jobportal.repository.JobRepository;
 import com.jobportal.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.util.List;
 
@@ -37,25 +43,25 @@ public class JobService {
         return toResponse(job);
     }
 
-    public List<JobResponse> getAllJobs() {
-        return jobRepository.findAll().stream()
-                .map(this::toResponse)
-                .toList();
-    }
+//    public List<JobResponse> getAllJobs() {
+//        return jobRepository.findAll().stream()
+//                .map(this::toResponse)
+//                .toList();
+//    }
 
     public JobResponse getJobById(Long id) {
         Job job = jobRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Job not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + id));
         return toResponse(job);
     }
 
     public void deleteJob(Long id) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Job job = jobRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Job not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + id));
 
         if (!job.getPostedBy().getEmail().equals(email)) {
-            throw new RuntimeException("You can only delete jobs you posted");
+            throw new UnauthorizedException("You can only delete jobs you posted");
         }
         jobRepository.delete(job);
     }
@@ -63,10 +69,10 @@ public class JobService {
     public JobResponse updateJob(Long id, JobRequest request) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Job job = jobRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Job not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + id));
 
         if (!job.getPostedBy().getEmail().equals(email)) {
-            throw new RuntimeException("You can only edit jobs you posted");
+            throw new UnauthorizedException("You can only edit jobs you posted");
         }
 
         job.setTitle(request.getTitle());
@@ -77,6 +83,17 @@ public class JobService {
 
         jobRepository.save(job);
         return toResponse(job);
+    }
+
+    public Page<JobResponse> getAllJobs(int page, int size, String sortBy, String sortDir) {
+        Sort sort = sortDir.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<Job> jobsPage = jobRepository.findAll(pageable);
+
+        return jobsPage.map(this::toResponse);
     }
 
     private JobResponse toResponse(Job job) {

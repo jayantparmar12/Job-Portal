@@ -1,7 +1,10 @@
 package com.jobportal.service;
 
 import com.jobportal.dto.*;
+import com.jobportal.entity.RefreshToken;
 import com.jobportal.entity.User;
+import com.jobportal.exception.DuplicateResourceException;
+import com.jobportal.exception.ResourceNotFoundException;
 import com.jobportal.repository.UserRepository;
 import com.jobportal.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -18,10 +21,11 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already registered");
+            throw new DuplicateResourceException("Email already registered");
         }
 
         User user = User.builder()
@@ -34,7 +38,9 @@ public class AuthService {
         userRepository.save(user);
 
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
-        return new AuthResponse(token, user.getRole().name(), user.getEmail());
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getEmail());
+
+        return new AuthResponse(token, refreshToken.getToken(), user.getRole().name(), user.getEmail());
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -43,9 +49,21 @@ public class AuthService {
                         request.getEmail(), request.getPassword()));
 
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
-        return new AuthResponse(token, user.getRole().name(), user.getEmail());
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getEmail());
+
+        return new AuthResponse(token, refreshToken.getToken(), user.getRole().name(), user.getEmail());
+    }
+
+    public AuthResponse refreshAccessToken(String requestRefreshToken) {
+        RefreshToken refreshToken = refreshTokenService.findByToken(requestRefreshToken);
+        refreshTokenService.verifyExpiration(refreshToken);
+
+        User user = refreshToken.getUser();
+        String newAccessToken = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
+
+        return new AuthResponse(newAccessToken, refreshToken.getToken(), user.getRole().name(), user.getEmail());
     }
 }
