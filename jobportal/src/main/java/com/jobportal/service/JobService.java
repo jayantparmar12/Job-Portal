@@ -96,6 +96,38 @@ public class JobService {
         return jobsPage.map(this::toResponse);
     }
 
+    public Page<JobResponse> searchJobs(String keyword, int page, int size, String sortBy, String sortDir) {
+        Sort sort = sortDir.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<Job> jobsPage;
+        if (keyword == null || keyword.trim().isEmpty()) {
+            jobsPage = jobRepository.findAll(pageable);
+        } else {
+            jobsPage = jobRepository.searchJobs(keyword.trim(), pageable);
+        }
+
+        return jobsPage.map(this::toResponse);
+    }
+
+    public Page<JobResponse> getMyPostedJobs(int page, int size, String sortBy, String sortDir) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User recruiter = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Recruiter not found"));
+
+        Sort sort = sortDir.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<Job> jobsPage = jobRepository.findByPostedBy(recruiter, pageable);
+
+        return jobsPage.map(this::toResponse);
+    }
+
     private JobResponse toResponse(Job job) {
         return new JobResponse(
                 job.getId(), job.getTitle(), job.getDescription(),

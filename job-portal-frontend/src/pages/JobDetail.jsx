@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export default function JobDetail() {
   const { id } = useParams();
@@ -15,6 +16,20 @@ export default function JobDetail() {
   useEffect(() => {
     api.get(`/jobs/${id}`).then((res) => setJob(res.data));
   }, [id]);
+
+
+  // component ke andar
+  const navigate = useNavigate();
+
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete this job?")) return;
+    try {
+      await api.delete(`/jobs/${id}`);
+      navigate("/my-jobs");
+    } catch (err) {
+      setMessage(err.response?.data?.message || "Failed to delete job");
+    }
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -111,6 +126,28 @@ export default function JobDetail() {
             >
               View Applicants
             </Link>
+            {user?.role === "RECRUITER" && user.email === job.postedByEmail && (
+              <div className="flex gap-3 mt-6">
+                <Link
+                  to={`/edit-job/${job.id}`}
+                  className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
+                >
+                  Edit Job
+                </Link>
+                <Link
+                  to={`/jobs/${job.id}/applicants`}
+                  className="bg-slate-700 text-white px-4 py-2 rounded hover:bg-slate-800"
+                >
+                  View Applicants
+                </Link>
+                <button
+                  onClick={handleDelete}
+                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                >
+                  Delete Job
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -21,6 +21,14 @@ export default function Navbar() {
         {user?.role === "CANDIDATE" && (
           <Link to="/my-applications" className="hover:text-blue-400">My Applications</Link>
         )}
+          {user?.role === "RECRUITER" && (
+            <>
+              <Link to="/my-jobs" className="hover:text-blue-400">My Jobs</Link>
+            </>
+          )}
+        {user && (
+          <Link to="/profile" className="hover:text-blue-400">Profile</Link>
+        )}
         {user ? (
           <button onClick={handleLogout} className="bg-red-500 px-3 py-1 rounded hover:bg-red-600">
             Logout ({user.email})
@@ -30,9 +38,6 @@ export default function Navbar() {
             <Link to="/login" className="hover:text-blue-400">Login</Link>
             <Link to="/register" className="hover:text-blue-400">Register</Link>
           </>
-        )}
-        {user && (
-          <Link to="/profile" className="hover:text-blue-400">Profile</Link>
         )}
       </div>
     </nav>

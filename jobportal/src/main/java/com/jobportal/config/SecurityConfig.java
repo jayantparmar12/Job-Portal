@@ -2,6 +2,7 @@ package com.jobportal.config;
 
 import com.jobportal.security.JwtAuthFilter;
 import com.jobportal.security.UserDetailsServiceImpl;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -55,16 +56,22 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(sess ->
                         sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .anonymous(anonymous -> anonymous.disable())   // ⬅️ NEW: no anonymous fallback
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((request, response, authException) ->
+                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
+                )
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.GET, "/api/jobs/my-jobs").hasRole("RECRUITER")
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/jobs/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/jobs/**").hasRole("RECRUITER")
                         .requestMatchers(HttpMethod.DELETE, "/api/jobs/**").hasRole("RECRUITER")
+                        .requestMatchers(HttpMethod.PUT, "/api/jobs/**").hasRole("RECRUITER")
                         .requestMatchers(HttpMethod.POST, "/api/applications").hasRole("CANDIDATE")
                         .requestMatchers(HttpMethod.GET, "/api/applications/my").hasRole("CANDIDATE")
                         .requestMatchers(HttpMethod.GET, "/api/applications/job/**").hasRole("RECRUITER")
                         .requestMatchers(HttpMethod.PUT, "/api/applications/*/status").hasRole("RECRUITER")
-                        .requestMatchers(HttpMethod.PUT, "/api/jobs/**").hasRole("RECRUITER")
                         .requestMatchers(HttpMethod.POST, "/api/upload/**").hasRole("CANDIDATE")
                         .requestMatchers("/files/**").permitAll()
                         .anyRequest().authenticated()
@@ -82,7 +89,7 @@ public class SecurityConfig {
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
         config.setAllowedHeaders(List.of("*"));
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);   // "Configuration" — no "s"
+        source.registerCorsConfiguration("/**", config);
         return source;
     }
 }

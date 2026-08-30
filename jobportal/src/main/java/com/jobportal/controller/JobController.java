@@ -44,13 +44,23 @@ public class JobController {
         return ResponseEntity.ok(jobService.updateJob(id, request));
     }
 
-    @GetMapping
-    public ResponseEntity<Page<JobResponse>> getAllJobs(
+    @GetMapping("/my-jobs")
+    public ResponseEntity<Page<JobResponse>> getMyPostedJobs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
-        return ResponseEntity.ok(jobService.getAllJobs(page, size, sortBy, sortDir));
+        return ResponseEntity.ok(jobService.getMyPostedJobs(page, size, sortBy, sortDir));
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<JobResponse>> getAllJobs(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir) {
+        return ResponseEntity.ok(jobService.searchJobs(keyword, page, size, sortBy, sortDir));
     }
 
 }
