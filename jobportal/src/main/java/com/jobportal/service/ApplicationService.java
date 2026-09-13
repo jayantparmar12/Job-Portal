@@ -22,7 +22,7 @@ public class ApplicationService {
     private final ApplicationRepository applicationRepository;
     private final JobRepository jobRepository;
     private final UserRepository userRepository;
-    private final EmailService emailService;   // ⬅️ NEW
+    private final EmailService emailService;
 
     private User currentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -50,7 +50,7 @@ public class ApplicationService {
 
         applicationRepository.save(application);
 
-        // ⬅️ NEW: notify recruiter
+
         emailService.sendEmail(
                 job.getPostedBy().getEmail(),
                 "New Application Received - " + job.getTitle(),
@@ -96,7 +96,6 @@ public class ApplicationService {
         application.setStatus(status);
         applicationRepository.save(application);
 
-        // ⬅️ NEW: notify candidate
         String candidateName = application.getCandidate().getName();
         String jobTitle = application.getJob().getTitle();
         emailService.sendEmail(
