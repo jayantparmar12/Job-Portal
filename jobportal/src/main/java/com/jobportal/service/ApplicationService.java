@@ -3,6 +3,9 @@ package com.jobportal.service;
 import com.jobportal.dto.ApplicationRequest;
 import com.jobportal.dto.ApplicationResponse;
 import com.jobportal.entity.*;
+import com.jobportal.exception.DuplicateResourceException;
+import com.jobportal.exception.ResourceNotFoundException;
+import com.jobportal.exception.UnauthorizedException;
 import com.jobportal.repository.ApplicationRepository;
 import com.jobportal.repository.JobRepository;
 import com.jobportal.repository.UserRepository;
@@ -19,22 +22,23 @@ public class ApplicationService {
     private final ApplicationRepository applicationRepository;
     private final JobRepository jobRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;   // ⬅️ NEW
 
     private User currentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
     public ApplicationResponse applyToJob(ApplicationRequest request) {
         User candidate = currentUser();
         Job job = jobRepository.findById(request.getJobId())
-                .orElseThrow(() -> new RuntimeException("Job not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
 
         boolean alreadyApplied = applicationRepository.findByCandidate(candidate).stream()
                 .anyMatch(app -> app.getJob().getId().equals(job.getId()));
         if (alreadyApplied) {
-            throw new RuntimeException("You have already applied to this job");
+            throw new DuplicateResourceException("You have already applied to this job");
         }
 
         Application application = Application.builder()
@@ -45,6 +49,17 @@ public class ApplicationService {
                 .build();
 
         applicationRepository.save(application);
+
+        // ⬅️ NEW: notify recruiter
+        emailService.sendEmail(
+                job.getPostedBy().getEmail(),
+                "New Application Received - " + job.getTitle(),
+                "Hi " + job.getPostedBy().getName() + ",\n\n" +
+                        candidate.getName() + " (" + candidate.getEmail() + ") has applied for the position: " + job.getTitle() + ".\n\n" +
+                        "Login to your dashboard to view the application.\n\n" +
+                        "- Job Portal Team"
+        );
+
         return toResponse(application);
     }
 
@@ -57,12 +72,11 @@ public class ApplicationService {
 
     public List<ApplicationResponse> getApplicantsForJob(Long jobId) {
         Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
 
-        // Only the recruiter who posted the job can view applicants
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         if (!job.getPostedBy().getEmail().equals(email)) {
-            throw new RuntimeException("You can only view applicants for jobs you posted");
+            throw new UnauthorizedException("You can only view applicants for jobs you posted");
         }
 
         return applicationRepository.findByJobId(jobId).stream()
@@ -72,15 +86,27 @@ public class ApplicationService {
 
     public ApplicationResponse updateStatus(Long applicationId, ApplicationStatus status) {
         Application application = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new RuntimeException("Application not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found"));
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         if (!application.getJob().getPostedBy().getEmail().equals(email)) {
-            throw new RuntimeException("You can only update applications for your own jobs");
+            throw new UnauthorizedException("You can only update applications for your own jobs");
         }
 
         application.setStatus(status);
         applicationRepository.save(application);
+
+        // ⬅️ NEW: notify candidate
+        String candidateName = application.getCandidate().getName();
+        String jobTitle = application.getJob().getTitle();
+        emailService.sendEmail(
+                application.getCandidate().getEmail(),
+                "Application Update - " + jobTitle,
+                "Hi " + candidateName + ",\n\n" +
+                        "Your application for the position \"" + jobTitle + "\" has been updated to: " + status.name() + ".\n\n" +
+                        "- Job Portal Team"
+        );
+
         return toResponse(application);
     }
 

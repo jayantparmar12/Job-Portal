@@ -18,14 +18,25 @@ export default function Navbar() {
         {user?.role === "RECRUITER" && (
           <Link to="/post-job" className="hover:text-blue-400">Post Job</Link>
         )}
+        {user?.role === "RECRUITER" && (
+          <>
+            <Link to="/dashboard" className="hover:text-blue-400">Dashboard</Link>
+          </>
+        )}
         {user?.role === "CANDIDATE" && (
           <Link to="/my-applications" className="hover:text-blue-400">My Applications</Link>
         )}
-          {user?.role === "RECRUITER" && (
-            <>
-              <Link to="/my-jobs" className="hover:text-blue-400">My Jobs</Link>
-            </>
-          )}
+        {user?.role === "CANDIDATE" && (
+          <>
+            <Link to="/my-applications" className="hover:text-blue-400">My Applications</Link>
+            <Link to="/saved-jobs" className="hover:text-blue-400">Saved Jobs</Link>
+          </>
+        )}
+        {user?.role === "RECRUITER" && (
+          <>
+            <Link to="/my-jobs" className="hover:text-blue-400">My Jobs</Link>
+          </>
+        )}
         {user && (
           <Link to="/profile" className="hover:text-blue-400">Profile</Link>
         )}

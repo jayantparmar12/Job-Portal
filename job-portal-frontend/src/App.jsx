@@ -11,6 +11,8 @@ import MyApplications from "./pages/MyApplications";
 import Applicants from "./pages/Applicants";
 import Profile from "./pages/Profile";
 import MyPostedJobs from "./pages/MyPostedJobs";
+import SavedJobs from "./pages/SavedJobs";
+import Dashboard from "./pages/Dashboard";
 
 export default function App() {
   return (
@@ -22,6 +24,22 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/jobs/:id" element={<JobDetail />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute allowedRole="RECRUITER">
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/saved-jobs"
+            element={
+              <ProtectedRoute allowedRole="CANDIDATE">
+                <SavedJobs />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/post-job"
             element={

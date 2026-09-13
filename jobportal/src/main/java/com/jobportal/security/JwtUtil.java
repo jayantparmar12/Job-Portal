@@ -2,18 +2,23 @@
 
     import io.jsonwebtoken.*;
     import io.jsonwebtoken.security.Keys;
+    import org.springframework.beans.factory.annotation.Value;
     import org.springframework.stereotype.Component;
 
     import javax.crypto.SecretKey;
+    import java.nio.charset.StandardCharsets;
     import java.util.Date;
     import java.util.function.Function;
 
     @Component
     public class JwtUtil {
 
-        // In production, move this to application.properties / env variable
-        private final SecretKey secretKey = Keys.hmacShaKeyFor(
-                "ThisIsASecretKeyForJwtPleaseMakeItLongEnough123".getBytes());
+        @Value("${jwt.secret}")
+        private String secret;
+
+        private SecretKey getSecretKey() {
+            return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        }
 
         private final long ACCESS_TOKEN_EXPIRATION = 1000 * 60 * 15; // 15 minutes
 
@@ -23,7 +28,7 @@
                     .claim("role", role)
                     .setIssuedAt(new Date())
                     .setExpiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRATION))
-                    .signWith(secretKey, SignatureAlgorithm.HS256)
+                    .signWith(getSecretKey(), SignatureAlgorithm.HS256)
                     .compact();
         }
 
@@ -50,7 +55,7 @@
 
         private Claims extractAllClaims(String token) {
             return Jwts.parserBuilder()
-                    .setSigningKey(secretKey)
+                    .setSigningKey(getSecretKey())
                     .build()
                     .parseClaimsJws(token)
                     .getBody();

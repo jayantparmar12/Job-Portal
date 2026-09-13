@@ -20,6 +20,14 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // ⬅️ NEW: skip refresh-token logic for login/register — these are public endpoints
+    const isAuthEndpoint = originalRequest.url.includes("/auth/login") ||
+                            originalRequest.url.includes("/auth/register");
+
+    if (isAuthEndpoint) {
+      return Promise.reject(error);   // let the component's own catch block handle it normally
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 

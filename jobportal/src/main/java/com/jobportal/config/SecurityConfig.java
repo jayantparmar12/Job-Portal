@@ -22,6 +22,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
+import com.jobportal.security.RateLimitFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -30,6 +31,7 @@ public class SecurityConfig {
 
     private final UserDetailsServiceImpl userDetailsService;
     private final JwtAuthFilter jwtAuthFilter;
+    private final RateLimitFilter rateLimitFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -56,28 +58,38 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(sess ->
                         sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .anonymous(anonymous -> anonymous.disable())   // ⬅️ NEW: no anonymous fallback
+                .anonymous(anonymous -> anonymous.disable())
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint((request, response, authException) ->
                                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.GET, "/api/jobs/my-jobs").hasRole("RECRUITER")
+
+                        // Public
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/jobs/**").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html",
+                                "/api-docs/**", "/v3/api-docs/**").permitAll()
+
+                        // Recruiter
+                        .requestMatchers("/api/dashboard/**").hasRole("RECRUITER")
+                        .requestMatchers("/api/applications/**").hasRole("RECRUITER")
                         .requestMatchers(HttpMethod.POST, "/api/jobs/**").hasRole("RECRUITER")
-                        .requestMatchers(HttpMethod.DELETE, "/api/jobs/**").hasRole("RECRUITER")
                         .requestMatchers(HttpMethod.PUT, "/api/jobs/**").hasRole("RECRUITER")
-                        .requestMatchers(HttpMethod.POST, "/api/applications").hasRole("CANDIDATE")
+                        .requestMatchers(HttpMethod.DELETE, "/api/jobs/**").hasRole("RECRUITER")
+
+                        // Candidate
+                        .requestMatchers("/api/saved-jobs/**").hasRole("CANDIDATE")
+                        .requestMatchers("/api/upload/**").hasRole("CANDIDATE")
+                        .requestMatchers("/api/applications").hasRole("CANDIDATE")
                         .requestMatchers(HttpMethod.GET, "/api/applications/my").hasRole("CANDIDATE")
-                        .requestMatchers(HttpMethod.GET, "/api/applications/job/**").hasRole("RECRUITER")
-                        .requestMatchers(HttpMethod.PUT, "/api/applications/*/status").hasRole("RECRUITER")
-                        .requestMatchers(HttpMethod.POST, "/api/upload/**").hasRole("CANDIDATE")
-                        .requestMatchers("/files/**").permitAll()
+
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)  
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
 
         return http.build();
     }

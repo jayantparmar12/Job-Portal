@@ -1,23 +1,22 @@
 package com.jobportal.controller;
 
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.*;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/upload")
 @RequiredArgsConstructor
 public class FileUploadController {
 
-    private final String uploadDir = "uploads/resumes";
+    private final Cloudinary cloudinary;
 
     @PostMapping("/resume")
     public ResponseEntity<Map<String, String>> uploadResume(@RequestParam("file") MultipartFile file) {
@@ -31,18 +30,12 @@ public class FileUploadController {
                 throw new RuntimeException("Only PDF files are allowed");
             }
 
-            Path dirPath = Paths.get(uploadDir);
-            if (!Files.exists(dirPath)) {
-                Files.createDirectories(dirPath);
-            }
+            Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+                    "resource_type", "raw",       // "raw" for non-image files like PDFs
+                    "folder", "job-portal/resumes"
+            ));
 
-            String email = SecurityContextHolder.getContext().getAuthentication().getName();
-            String fileName = UUID.randomUUID() + "_" + email.replace("@", "_") + ".pdf";
-
-            Path filePath = dirPath.resolve(fileName);
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-            String fileUrl = "http://localhost:8080/files/resumes/" + fileName;
+            String fileUrl = (String) uploadResult.get("secure_url");
 
             Map<String, String> response = new HashMap<>();
             response.put("url", fileUrl);
